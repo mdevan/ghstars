@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v45/github"
+	"github.com/spf13/pflag"
 	"golang.org/x/oauth2"
 )
 
@@ -64,17 +65,22 @@ func loadFile() (out []*github.StarredRepository) {
 	return
 }
 
-func search(term string) {
+func search(term, lang string) {
 	term = strings.ToLower(term)
+	lang = strings.ToLower(lang)
 
 	repos := loadFile()
 	sel := make([]*github.Repository, 0, len(repos))
 	for _, r := range repos {
 		r := r.Repository
-		if strings.Contains(strings.ToLower(r.GetFullName()), term) ||
-			strings.Contains(strings.ToLower(r.GetDescription()), term) {
-			sel = append(sel, r)
+		if !strings.Contains(strings.ToLower(r.GetFullName()), term) &&
+			!strings.Contains(strings.ToLower(r.GetDescription()), term) {
+			continue
 		}
+		if lang != "" && strings.ToLower(r.GetLanguage()) != lang {
+			continue
+		}
+		sel = append(sel, r)
 	}
 
 	sort.SliceStable(sel, func(i, j int) bool {
@@ -95,20 +101,38 @@ func search(term string) {
 			"\x1b[0m",
 		)
 	}
+	if len(sel) > 0 {
+		fmt.Println()
+	}
 }
 
 func main() {
 	log.SetFlags(0)
-	log.SetPrefix("ghstars: ")
 
-	if len(os.Args) == 2 && os.Args[1] == "update" {
-		updateFile()
-	} else if len(os.Args) == 3 && os.Args[1] == "search" {
-		search(os.Args[2])
-	} else {
+	fs := pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+	lang := fs.StringP("lang", "l", "", "show only repos written in this language")
+	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage: ghstars update
-       ghstars search search-term
+       ghstars [options] search search-term
+
+Options are:
 `)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(os.Args[1:]); err == pflag.ErrHelp {
+		os.Exit(0)
+	} else if err != nil {
+		os.Exit(1)
+	}
+
+	log.SetPrefix("ghstars: ")
+	nargs := fs.NArg()
+	if nargs == 1 && fs.Arg(0) == "update" {
+		updateFile()
+	} else if nargs == 2 && fs.Arg(0) == "search" {
+		search(fs.Arg(1), *lang)
+	} else {
+		fs.Usage()
 		os.Exit(1)
 	}
 }

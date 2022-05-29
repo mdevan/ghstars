@@ -7,6 +7,9 @@ github.com/google/go-github/v45/github
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
 github.com/google/go-querystring/query
+# github.com/spf13/pflag v1.0.5
+## explicit; go 1.12
+github.com/spf13/pflag
 # golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 ## explicit; go 1.17
 golang.org/x/crypto/cast5
